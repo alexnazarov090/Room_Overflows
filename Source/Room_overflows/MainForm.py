@@ -236,7 +236,7 @@ class MainForm(Form):
 		self._pars_set_groupBox.Font = System.Drawing.Font("Microsoft Sans Serif", 9.75, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
 		self._pars_set_groupBox.Location = System.Drawing.Point(12, 12)
 		self._pars_set_groupBox.Name = "pars_set_groupBox"
-		self._pars_set_groupBox.Size = System.Drawing.Size(363, 90)
+		self._pars_set_groupBox.Size = System.Drawing.Size(348, 90)
 		self._pars_set_groupBox.TabIndex = 0
 		self._pars_set_groupBox.TabStop = False
 		self._pars_set_groupBox.Text = "Choose Parameter Set"
@@ -258,7 +258,7 @@ class MainForm(Form):
 		# 
 		self._shr_pars_radio_button.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right
 		self._shr_pars_radio_button.Font = System.Drawing.Font("Microsoft Sans Serif", 9.75, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._shr_pars_radio_button.Location = System.Drawing.Point(183, 21)
+		self._shr_pars_radio_button.Location = System.Drawing.Point(182, 21)
 		self._shr_pars_radio_button.Name = "shr_pars_radio_button"
 		self._shr_pars_radio_button.Size = System.Drawing.Size(150, 44)
 		self._shr_pars_radio_button.TabIndex = 1
@@ -298,34 +298,45 @@ class MainForm(Form):
 		# 
 		self._space_id_par_textBox.Cursor = System.Windows.Forms.Cursors.No
 		self._space_id_par_textBox.Dock = System.Windows.Forms.DockStyle.Fill
+		self._space_id_par_textBox.Enabled = False
 		self._space_id_par_textBox.Location = System.Drawing.Point(233, 76)
 		self._space_id_par_textBox.Name = "space_id_par_textBox"
 		self._space_id_par_textBox.Size = System.Drawing.Size(323, 20)
 		self._space_id_par_textBox.TabIndex = 8
+		self._space_id_par_textBox.Tag = "Space Identification Parameter"
 		# 
 		# pressure_cls_par_textBox
 		# 
+		self._pressure_cls_par_textBox.Cursor = System.Windows.Forms.Cursors.No
 		self._pressure_cls_par_textBox.Dock = System.Windows.Forms.DockStyle.Fill
+		self._pressure_cls_par_textBox.Enabled = False
 		self._pressure_cls_par_textBox.Location = System.Drawing.Point(233, 148)
 		self._pressure_cls_par_textBox.Name = "pressure_cls_par_textBox"
 		self._pressure_cls_par_textBox.Size = System.Drawing.Size(323, 20)
 		self._pressure_cls_par_textBox.TabIndex = 10
+		self._pressure_cls_par_textBox.Tag = "Pressure Class Parameter"
 		# 
 		# overflow_par_textBox
 		# 
+		self._overflow_par_textBox.Cursor = System.Windows.Forms.Cursors.No
 		self._overflow_par_textBox.Dock = System.Windows.Forms.DockStyle.Fill
+		self._overflow_par_textBox.Enabled = False
 		self._overflow_par_textBox.Location = System.Drawing.Point(233, 220)
 		self._overflow_par_textBox.Name = "overflow_par_textBox"
 		self._overflow_par_textBox.Size = System.Drawing.Size(323, 20)
 		self._overflow_par_textBox.TabIndex = 12
+		self._overflow_par_textBox.Tag = "Overflow Air Parameter"
 		# 
 		# inflow_par_textBox
 		# 
+		self._inflow_par_textBox.Cursor = System.Windows.Forms.Cursors.No
 		self._inflow_par_textBox.Dock = System.Windows.Forms.DockStyle.Fill
+		self._inflow_par_textBox.Enabled = False
 		self._inflow_par_textBox.Location = System.Drawing.Point(233, 292)
 		self._inflow_par_textBox.Name = "inflow_par_textBox"
 		self._inflow_par_textBox.Size = System.Drawing.Size(323, 20)
 		self._inflow_par_textBox.TabIndex = 14
+		self._inflow_par_textBox.Tag = "Inflow Air Parameter"
 		# 
 		# door_pars_groupBox
 		# 
@@ -335,9 +346,9 @@ class MainForm(Form):
 		self._door_pars_groupBox.Controls.Add(self._door_crack_width_textBox)
 		self._door_pars_groupBox.Controls.Add(self._door_crack_width_label)
 		self._door_pars_groupBox.Font = System.Drawing.Font("Microsoft Sans Serif", 9.75, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._door_pars_groupBox.Location = System.Drawing.Point(381, 12)
+		self._door_pars_groupBox.Location = System.Drawing.Point(366, 12)
 		self._door_pars_groupBox.Name = "door_pars_groupBox"
-		self._door_pars_groupBox.Size = System.Drawing.Size(191, 90)
+		self._door_pars_groupBox.Size = System.Drawing.Size(206, 90)
 		self._door_pars_groupBox.TabIndex = 1
 		self._door_pars_groupBox.TabStop = False
 		self._door_pars_groupBox.Text = "Door Parameter"
@@ -348,17 +359,18 @@ class MainForm(Form):
 		self._door_crack_width_label.AutoSize = True
 		self._door_crack_width_label.Location = System.Drawing.Point(7, 22)
 		self._door_crack_width_label.Name = "door_crack_width_label"
-		self._door_crack_width_label.Size = System.Drawing.Size(113, 16)
+		self._door_crack_width_label.Size = System.Drawing.Size(130, 16)
 		self._door_crack_width_label.TabIndex = 0
-		self._door_crack_width_label.Text = "Door Crack Width"
+		self._door_crack_width_label.Text = "Door Crack Width, m"
 		# 
 		# door_crack_width_textBox
 		# 
 		self._door_crack_width_textBox.HideSelection = False
-		self._door_crack_width_textBox.Location = System.Drawing.Point(139, 22)
+		self._door_crack_width_textBox.Location = System.Drawing.Point(154, 22)
 		self._door_crack_width_textBox.Name = "door_crack_width_textBox"
 		self._door_crack_width_textBox.Size = System.Drawing.Size(46, 22)
 		self._door_crack_width_textBox.TabIndex = 1
+		self._door_crack_width_textBox.Tag = "Door Crack Width"
 		# 
 		# flow_coeff_label
 		# 
@@ -371,10 +383,11 @@ class MainForm(Form):
 		# 
 		# flow_coeff_textBox
 		# 
-		self._flow_coeff_textBox.Location = System.Drawing.Point(139, 57)
+		self._flow_coeff_textBox.Location = System.Drawing.Point(154, 57)
 		self._flow_coeff_textBox.Name = "flow_coeff_textBox"
 		self._flow_coeff_textBox.Size = System.Drawing.Size(46, 22)
 		self._flow_coeff_textBox.TabIndex = 3
+		self._flow_coeff_textBox.Tag = "Flow Coefficient"
 		# 
 		# progressBar
 		# 

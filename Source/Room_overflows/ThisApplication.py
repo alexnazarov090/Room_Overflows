@@ -77,7 +77,6 @@ class ThisApplication (ApplicationEntryPoint):
         controller.run()
 
 
-
 class CalculateRoomOverflows(object):
     def __init__(self, __revit__, space_id_par=None,  pressure_cls_par=None, 
                 overflow_par=None, inflow_par=None, door_crack_width=0.001, flow_coefficient=0.7):
@@ -296,6 +295,7 @@ class Controller(object):
         self.parameters = {}
         self.config_file_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.open_config_file_Dialog = WinForms.OpenFileDialog()
+        self.save_config_file_Dialog = WinForms.SaveFileDialog()
 
         self._connectSignals()
 
@@ -310,6 +310,8 @@ class Controller(object):
         self._view._overflow_par_comboBox.SelectedValueChanged += self._overflow_par_comboBox_SelValChanged
         self._view._inflow_par_comboBox.SelectedValueChanged += self._inflow_par_comboBox_SelValChanged
         self._view._run_button.Click += self.run_button_Clicked
+        self._view._load_stngs_button.Click += lambda _, __: self.load_settings()
+        self._view._save_stngs_button.Click += lambda _, __: self.save_settings()
 
         self._model.CalcStart += self.startProgressBar
         self._model.ReportProgress += self.updateProgressBar
@@ -329,10 +331,79 @@ class Controller(object):
     def On_MainForm_StartUp(self, sender, args):
         self.load_project_parameters()
 
-    
+    def save_settings(self):
+
+        try:
+            filename = self._view._config_file_path_textBox.Text
+
+            if self._view._config_file_path_textBox.Text == "":
+
+                self.save_config_file_Dialog.InitialDirectory = self.config_file_dir_path
+                self.save_config_file_Dialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
+                self.save_config_file_Dialog.FilterIndex = 1
+                self.save_config_file_Dialog.RestoreDirectory = True
+
+                result = self.save_config_file_Dialog.ShowDialog(self._view)
+                if result == WinForms.DialogResult.OK:
+                    filename = self.save_config_file_Dialog.FileName
+                    self._view._config_file_path_textBox.Text = filename
+                else:
+                    return
+                    
+            config = {}
+            for item in (self._view._door_pars_groupBox.Controls, self._view._tableLayoutPanel.Controls):
+                    for c in item:
+                        if c.GetType() == clr.GetClrType(WinForms.ComboBox):
+                            config[c.Name] = c.SelectedItem
+                        elif c.GetType() == clr.GetClrType(WinForms.TextBox):
+                            config[c.Name] = c.Text
+                        elif c.GetType() == clr.GetClrType(WinForms.CheckedListBox):
+                            config[c.Name] = c.CheckedItems
+
+            with io.open(filename,
+                        'w', encoding='utf8') as file:
+                json.dump(config, file, ensure_ascii=False, indent=4, sort_keys=True)
+
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
+    def load_settings(self):
+
+        self.open_config_file_Dialog.InitialDirectory = self.config_file_dir_path
+        self.open_config_file_Dialog.Filter = "JSON files (*.json)|*.json"
+        self.open_config_file_Dialog.FilterIndex = 2
+        self.open_config_file_Dialog.RestoreDirectory = True
+
+        result = self.open_config_file_Dialog.ShowDialog(self._view)
+        if result == WinForms.DialogResult.OK:
+            self._view._config_file_path_textBox.Clear()
+            filename = self.open_config_file_Dialog.FileName
+            self._view._config_file_path_textBox.Text = filename
+        else:
+            return
+
+        try:
+            with io.open(filename,
+                        'r', encoding='utf8') as file:
+                config = json.load(file)
+                for item in (self._view._door_pars_groupBox.Controls, self._view._tableLayoutPanel.Controls):
+                    for c in item:
+                        if c.GetType() == clr.GetClrType(WinForms.ComboBox):
+                            c.SelectedItem = config[c.Name]
+                        elif c.GetType() == clr.GetClrType(WinForms.TextBox):
+                            c.Text = config[c.Name]
+                        elif c.GetType() == clr.GetClrType(WinForms.CheckedListBox):
+                            for item in config[c.Name]:
+                                index = c.FindStringExact(item)
+                                if (index != c.NoMatches):
+                                    c.SetItemChecked(index, True)
+
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
     def prj_pars_radio_button_CheckChng(self, sender, args):
         if sender.Checked:
-            self._view.load_project_parameters()
+            self.load_project_parameters()
             self._view._shared_parameters_comboBox.Enabled = False
             self._view._space_id_par_comboBox.Enabled = True
             self._view._pressure_cls_par_comboBox.Enabled = True
@@ -433,8 +504,13 @@ class Controller(object):
 
     def run_button_Clicked(self, sender, args):
 
-        unfilled_fields = filter(lambda x: x is not None, map(self.check_for_empty, (self._view._space_id_par_textBox, 
-        self._view._pressure_cls_par_textBox, self._view._overflow_par_textBox, self._view._inflow_par_textBox)))
+        unfilled_fields = filter(lambda x: x is not None, map(self.check_for_empty, 
+        (self._view._space_id_par_textBox, 
+        self._view._pressure_cls_par_textBox, 
+        self._view._overflow_par_textBox, 
+        self._view._inflow_par_textBox, 
+        self._view._door_crack_width_textBox, 
+        self._view._flow_coeff_textBox)))
         
         if len(unfilled_fields) > 0:
             message = ", ".join(unfilled_fields) + ' unfilled!'
@@ -464,7 +540,7 @@ class Controller(object):
         
     def check_for_empty(self, control):
         if control.Text == "":
-            return control.Name
+            return control.Tag
 
     def merge_two_dicts(self, d1, d2):
         '''
