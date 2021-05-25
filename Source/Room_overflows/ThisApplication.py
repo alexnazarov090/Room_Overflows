@@ -1,21 +1,20 @@
 ﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import System
 import clr
 clr.AddReference("RevitAPI.dll")
 clr.AddReference("RevitAPIUI.dll")
 clr.AddReference('System.Drawing')
 clr.AddReference('System.Windows.Forms')
-from System import Array
-import System.Drawing
+
 import System.Windows.Forms as WinForms
-from Autodesk.Revit import *
-from Autodesk.Revit.UI import *
-from Autodesk.Revit.UI.Macros import *
-from Autodesk.Revit.DB import *
-from Autodesk.Revit.DB import Category
-from Autodesk.Revit.UI.Selection import *
+from Autodesk.Revit import Attributes
+from Autodesk.Revit.UI import UIDocument
+from Autodesk.Revit.UI.Macros import ApplicationEntryPoint
+from Autodesk.Revit.UI.Selection import ObjectType
+from Autodesk.Revit.DB import Category, FilteredElementCollector, TransactionGroup, Transaction, TransactionStatus
+from Autodesk.Revit.DB import UnitUtils, DisplayUnitType, BuiltInParameter, BuiltInCategory
+
 import sys
 path = r'C:\Program Files (x86)\IronPython 2.7\Lib'
 sys.path.append(path)
@@ -27,6 +26,7 @@ import re
 import logging
 import json
 import io
+from collections import namedtuple
 
 # Logger
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -79,7 +79,9 @@ class ThisApplication (ApplicationEntryPoint):
 
 class CalculateRoomOverflows(object):
     def __init__(self, __revit__, space_id_par=None,  pressure_cls_par=None, 
-                overflow_par=None, inflow_par=None, door_crack_width=0.001, flow_coefficient=0.7):
+                overflow_par=None, inflow_par=None, 
+                door_crack_width=0.001, flow_coefficient=0.7):
+                
         self.doc = __revit__.ActiveUIDocument.Document
         self.uidoc = UIDocument(self.doc)
         self._space_id_par = space_id_par
@@ -166,7 +168,8 @@ class CalculateRoomOverflows(object):
             tg.Start()
 
             try:
-                self.spaces_data = {space.get_Parameter(self._space_id_par).AsString():space for space in self.spaces}
+                self.spaces_data = {space.get_Parameter(self._space_id_par).AsString(): space for space in self.spaces}
+            
             except Exception as e:
                 logger.error(e, exc_info=True)
                 WinForms.MessageBox.Show("Task failed!", "Error!", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error)
@@ -257,17 +260,20 @@ class CalculateRoomOverflows(object):
                     room_pressures[space] = 0
             else:
                 room_pressures[space] = 0
+        
+        SpacesData = namedtuple('SpacesData', ['space_id', 'pressure'])
 
         sorted_spaces = sorted(room_pressures.items(), key=lambda x: x[1], reverse=True)
-        
-        P1 = sorted_spaces[0][1]
-        P2 = sorted_spaces[1][1]
+        overflow_space = SpacesData(*sorted_spaces[0])
+        inflow_space = SpacesData(*sorted_spaces[1])
+
+        P1 = overflow_space.pressure
+        P2 = inflow_space.pressure
         dP = P1 - P2
         
-        # dP = (max(room_pressures) - room_pressures[0]) + (max(room_pressures) - room_pressures[1])
         dL = 3600*door_crack_area*mu*math.sqrt((2*dP)/1.2)
         
-        return dL, sorted_spaces[0][0], sorted_spaces[1][0]
+        return dL, overflow_space.space_id, inflow_space.space_id
 
     def reset_overflows(self, spaces):
         for space in spaces:
@@ -467,9 +473,8 @@ class Controller(object):
         if self._view._shared_parameters_comboBox.SelectedIndex != 0:
             ext_defs = self.get_ext_defs()
             self.parameters = self.merge_two_dicts(self.parameters, ext_defs)
-            for control in self._view._tableLayoutPanel.Controls:
-                    if control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
-                                self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
+            for control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
+                            self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
                         control.Enabled = True
                         control.Items.Clear()
                         control.BeginUpdate()
@@ -479,9 +484,8 @@ class Controller(object):
                         control.Items.Insert(0, "Please select a parameter...")
                         control.SelectedIndex = 0
         else:
-            for control in self._view._tableLayoutPanel.Controls:
-                if control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
-                                self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
+            for control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
+                            self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
                     control.Items.Clear()
                     control.Items.Insert(0, "Please select a parameter...")
                     control.SelectedIndex = 0
