@@ -13,7 +13,10 @@ from Autodesk.Revit.UI import UIDocument
 from Autodesk.Revit.UI.Macros import ApplicationEntryPoint
 from Autodesk.Revit.UI.Selection import ObjectType
 from Autodesk.Revit.DB import Category, FilteredElementCollector, TransactionGroup, Transaction, TransactionStatus
-from Autodesk.Revit.DB import UnitUtils, DisplayUnitType, BuiltInParameter, BuiltInCategory
+from Autodesk.Revit.DB import UnitUtils, DisplayUnitType, BuiltInParameter, BuiltInCategory, ElementId, XYZ
+from Autodesk.Revit.DB import ParameterValueProvider, FilterStringContains, FilterStringRule, ElementParameterFilter
+from Autodesk.Revit.DB import FamilySymbol
+from Autodesk.Revit.DB.Structure import StructuralType
 
 import sys
 path = r'C:\Program Files (x86)\IronPython 2.7\Lib'
@@ -151,6 +154,7 @@ class CalculateRoomOverflows(object):
             ref = sel.PickObject(ObjectType.Element, "Please pick a linked model instance")
             rvt_link = self.doc.GetElement(ref.ElementId)
             self.linkedDoc = rvt_link.GetLinkDocument()
+            self.transform = rvt_link.GetTotalTransform()
 
             self.doors = FilteredElementCollector(self.linkedDoc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_Doors).ToElements()
             self.spaces = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_MEPSpaces).ToElements()
@@ -188,10 +192,11 @@ class CalculateRoomOverflows(object):
 
             for door in self.doors:
                 try:
+                    self.insert_arrow(door)
                     room1 = door.FromRoom[phase]
                     room2 = door.ToRoom[phase]
                     if room1 and room2:
-                        airflow, overflow_space, inflow_space = self.calculate_overflow(door, (room1, room2), self.spaces_data)
+                        airflow, overflow_space, inflow_space = self.calculate_overflow(door, (room1, room2))
                         overflows_data[overflow_space] = overflows_data.get(overflow_space, 0) + airflow
                         inflows_data[inflow_space] = inflows_data.get(inflow_space, 0) + airflow
 
@@ -232,7 +237,7 @@ class CalculateRoomOverflows(object):
                 WinForms.MessageBox.Show("Task failed!", "Error!", 
                 WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error)
     
-    def calculate_overflow(self, door, rooms, spaces_data):
+    def calculate_overflow(self, door, rooms):
         door_width = float(door.get_Parameter(BuiltInParameter.DOOR_WIDTH).AsValueString())
         door_height = float(door.get_Parameter(BuiltInParameter.DOOR_HEIGHT).AsValueString())
         
@@ -290,6 +295,39 @@ class CalculateRoomOverflows(object):
             except Exception as e:
                     logger.error(e, exc_info=True)
                     pass  
+    
+    def get_arrow_family_type(self):
+        try:
+            family_sym_name_param_prov = ParameterValueProvider(ElementId(BuiltInParameter.SYMBOL_NAME_PARAM))
+            param_equality = FilterStringContains()
+            family_sym_name_value_rule = FilterStringRule(family_sym_name_param_prov, 
+                                                    param_equality, 
+                                                    "Arrow Wide", 
+                                                    False)
+            param_filter = ElementParameterFilter(family_sym_name_value_rule)
+            arrow_family_type = FilteredElementCollector(self.doc).OfClass(FamilySymbol).WherePasses(param_filter).FirstElement()
+            return arrow_family_type
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                return
+
+    def insert_arrow(self, door):
+        try:
+            with Transaction(self.doc, "Insert Arrow") as tr:
+                tr.Start()
+                arrow_symbol = self.get_arrow_family_type()
+                if not arrow_symbol.IsActive:
+                    arrow_symbol.Activate()
+                    self.doc.Regenerate()
+
+                door_coords = self.transform.OfPoint(door.Location.Point)
+                self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, self.doc.ActiveView)
+                tr.Commit()
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
 
 
 class Controller(object):
