@@ -15,7 +15,7 @@ from Autodesk.Revit.UI.Selection import ObjectType
 from Autodesk.Revit.DB import Category, FilteredElementCollector, TransactionGroup, Transaction, TransactionStatus
 from Autodesk.Revit.DB import UnitUtils, DisplayUnitType, BuiltInParameter, BuiltInCategory, ElementId, XYZ
 from Autodesk.Revit.DB import ParameterValueProvider, FilterStringContains, FilterStringRule, ElementParameterFilter
-from Autodesk.Revit.DB import FamilySymbol
+from Autodesk.Revit.DB import FamilySymbol, Line, ElementTransformUtils
 from Autodesk.Revit.DB.Structure import StructuralType
 
 import sys
@@ -192,13 +192,15 @@ class CalculateRoomOverflows(object):
 
             for door in self.doors:
                 try:
-                    self.insert_arrow(door)
                     room1 = door.FromRoom[phase]
                     room2 = door.ToRoom[phase]
                     if room1 and room2:
                         airflow, overflow_space, inflow_space = self.calculate_overflow(door, (room1, room2))
                         overflows_data[overflow_space] = overflows_data.get(overflow_space, 0) + airflow
                         inflows_data[inflow_space] = inflows_data.get(inflow_space, 0) + airflow
+
+                        if airflow > 0:
+                            self.insert_arrow(door, overflow_space, inflow_space)
 
                 except Exception as e:
                     logger.error(e, exc_info=True)
@@ -312,7 +314,7 @@ class CalculateRoomOverflows(object):
                 logger.error(e, exc_info=True)
                 return
 
-    def insert_arrow(self, door):
+    def insert_arrow(self, door, overflow_space, inflow_space):
         try:
             with Transaction(self.doc, "Insert Arrow") as tr:
                 tr.Start()
@@ -322,7 +324,33 @@ class CalculateRoomOverflows(object):
                     self.doc.Regenerate()
 
                 door_coords = self.transform.OfPoint(door.Location.Point)
-                self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, self.doc.ActiveView)
+                overflow_space_coords = self.transform.OfPoint(overflow_space.Location.Point)
+                inflow_space_coords = self.transform.OfPoint(inflow_space.Location.Point)
+                arrow_instance = self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, self.doc.ActiveView)
+                
+                door_orientation = door.FacingOrientation
+                
+                point1 = door_coords
+                point2 = door_coords + XYZ(0, 0, 10)
+                axis = Line.CreateBound(point1, point2)
+                angleToRotate = 0
+
+                if int(door_orientation.X) in (-1, 1):
+                    if overflow_space_coords.X > inflow_space_coords.X:
+                        angleToRotate = 90
+
+                    elif overflow_space_coords.X < inflow_space_coords.X:
+                        angleToRotate = -90
+
+                else:
+                    if overflow_space_coords.Y > inflow_space_coords.Y:
+                        angleToRotate = 180
+
+                    elif overflow_space_coords.Y < inflow_space_coords.Y:
+                        angleToRotate = 0
+
+                ElementTransformUtils.RotateElement(self.doc, arrow_instance.Id, axis, ((math.pi / 180) * angleToRotate))
+                
                 tr.Commit()
 
         except Exception as e:
