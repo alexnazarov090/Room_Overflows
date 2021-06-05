@@ -8,6 +8,7 @@ clr.AddReference('System.Drawing')
 clr.AddReference('System.Windows.Forms')
 
 import System.Windows.Forms as WinForms
+
 from Autodesk.Revit import Attributes
 from Autodesk.Revit.UI import UIDocument
 from Autodesk.Revit.UI.Macros import ApplicationEntryPoint
@@ -15,7 +16,7 @@ from Autodesk.Revit.UI.Selection import ObjectType
 from Autodesk.Revit.DB import Category, FilteredElementCollector, TransactionGroup, Transaction, TransactionStatus
 from Autodesk.Revit.DB import UnitUtils, DisplayUnitType, BuiltInParameter, BuiltInCategory, ElementId, XYZ
 from Autodesk.Revit.DB import ParameterValueProvider, FilterStringContains, FilterStringRule, ElementParameterFilter
-from Autodesk.Revit.DB import FamilySymbol, Line, ElementTransformUtils
+from Autodesk.Revit.DB import FamilySymbol, FamilyInstanceFilter, Line, ElementTransformUtils, View, ViewDiscipline, ViewType
 from Autodesk.Revit.DB.Structure import StructuralType
 
 import sys
@@ -158,6 +159,8 @@ class CalculateRoomOverflows(object):
 
             self.doors = FilteredElementCollector(self.linkedDoc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_Doors).ToElements()
             self.spaces = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_MEPSpaces).ToElements()
+            self.views_dict = self.get_mech_views()
+
             self.CalcStart.emit(len(self.doors) + 2*(len(self.spaces)))
             self.__main()
             self.CalcEnd.emit()
@@ -200,7 +203,7 @@ class CalculateRoomOverflows(object):
                         inflows_data[inflow_space] = inflows_data.get(inflow_space, 0) + airflow
 
                         if airflow > 0:
-                            self.insert_arrow(door, overflow_space, inflow_space)
+                            self.insert_arrow(door, overflow_space, inflow_space, airflow)
 
                 except Exception as e:
                     logger.error(e, exc_info=True)
@@ -214,17 +217,17 @@ class CalculateRoomOverflows(object):
                 try:
                     for overflow_space, overflow in overflows_data.items():
                     
-                        room__overflow_par = overflow_space.get_Parameter(self._overflow_par)
+                        room_overflow_par = overflow_space.get_Parameter(self._overflow_par)
                         conv_val = UnitUtils.ConvertToInternalUnits(overflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
-                        room__overflow_par.Set(conv_val)
+                        room_overflow_par.Set(conv_val)
                         counter += 1
                         self.ReportProgress.emit(counter)
 
                     for inflow_space, inflow in inflows_data.items():
                     
-                        room__inflow_par = inflow_space.get_Parameter(self._inflow_par)
+                        room_inflow_par = inflow_space.get_Parameter(self._inflow_par)
                         conv_val = UnitUtils.ConvertToInternalUnits(inflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
-                        room__inflow_par.Set(conv_val)
+                        room_inflow_par.Set(conv_val)
                         counter += 1
                         self.ReportProgress.emit(counter)
 
@@ -285,19 +288,41 @@ class CalculateRoomOverflows(object):
     def reset_overflows(self, spaces):
         for space in spaces:
             try:
-                _overflow_par = space.get_Parameter(self._overflow_par)
-                _overflow_par.Set(0)
+                overflow_par = space.get_Parameter(self._overflow_par)
+                overflow_par.Set(0)
             except Exception as e:
                     logger.error(e, exc_info=True)
                     pass
             
             try:
-                _inflow_par = space.get_Parameter(self._inflow_par)
-                _inflow_par.Set(0)
+                inflow_par = space.get_Parameter(self._inflow_par)
+                inflow_par.Set(0)
             except Exception as e:
                     logger.error(e, exc_info=True)
-                    pass  
-    
+                    pass
+
+    def delete_arrows(self):
+        arrow_family_id = self.get_arrow_family_type().Id
+        param_filter = FamilyInstanceFilter(self.doc, arrow_family_id)
+        arrow_family_instances = FilteredElementCollector(self.doc).WherePasses(param_filter).FirstElement()
+        # TODO
+
+    def get_mech_views(self):
+
+        try:
+            views = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfClass(View)
+
+            views_dict = {view.GenLevel.UniqueId: view for view in views 
+            if view.Name and view.GenLevel
+            and view.ViewType == ViewType.FloorPlan
+            and view.Discipline == ViewDiscipline.Mechanical}
+
+            return views_dict
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
+
     def get_arrow_family_type(self):
         try:
             family_sym_name_param_prov = ParameterValueProvider(ElementId(BuiltInParameter.SYMBOL_NAME_PARAM))
@@ -314,7 +339,7 @@ class CalculateRoomOverflows(object):
                 logger.error(e, exc_info=True)
                 return
 
-    def insert_arrow(self, door, overflow_space, inflow_space):
+    def insert_arrow(self, door, overflow_space, inflow_space, airflow):
         try:
             with Transaction(self.doc, "Insert Arrow") as tr:
                 tr.Start()
@@ -323,34 +348,52 @@ class CalculateRoomOverflows(object):
                     arrow_symbol.Activate()
                     self.doc.Regenerate()
 
+                current_level_id = overflow_space.Level.UniqueId
+
                 door_coords = self.transform.OfPoint(door.Location.Point)
-                overflow_space_coords = self.transform.OfPoint(overflow_space.Location.Point)
-                inflow_space_coords = self.transform.OfPoint(inflow_space.Location.Point)
-                arrow_instance = self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, self.doc.ActiveView)
+                arrow_instance = self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, self.views_dict.get(current_level_id))
                 
                 door_orientation = door.FacingOrientation
-                
+
                 point1 = door_coords
                 point2 = door_coords + XYZ(0, 0, 10)
                 axis = Line.CreateBound(point1, point2)
                 angleToRotate = 0
 
-                if int(door_orientation.X) in (-1, 1):
-                    if overflow_space_coords.X > inflow_space_coords.X:
-                        angleToRotate = 90
+                door_bbox = door.get_BoundingBox(self.views_dict.get(current_level_id))
 
-                    elif overflow_space_coords.X < inflow_space_coords.X:
+                if int(door_orientation.X) in (-1, 1):
+
+                    if overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)
+                    ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)):
                         angleToRotate = -90
 
-                else:
-                    if overflow_space_coords.Y > inflow_space_coords.Y:
-                        angleToRotate = 180
+                    elif overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)
+                    ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)):
+                        angleToRotate = 90
 
-                    elif overflow_space_coords.Y < inflow_space_coords.Y:
-                        angleToRotate = 0
+                else:
+                
+                    if overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)
+                    ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)):
+                        angleToRotate = 180
 
                 ElementTransformUtils.RotateElement(self.doc, arrow_instance.Id, axis, ((math.pi / 180) * angleToRotate))
                 
+                tr.Commit()
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
+
+        try:
+            with Transaction(self.doc, "Set Air Leakage") as tr:
+                tr.Start()
+
+                air_leakage_par = arrow_instance.GetParameters("Air Leakage")[0]
+                conv_val = UnitUtils.ConvertToInternalUnits(airflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
+                air_leakage_par.Set(conv_val)
+
                 tr.Commit()
 
         except Exception as e:
