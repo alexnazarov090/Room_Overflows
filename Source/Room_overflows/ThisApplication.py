@@ -160,10 +160,16 @@ class CalculateRoomOverflows(object):
             self.doors = FilteredElementCollector(self.linkedDoc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_Doors).ToElements()
             self.spaces = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_MEPSpaces).ToElements()
             self.views_dict = self.get_mech_views()
+            self.arrow_families = self.get_arrow_families()
 
-            self.CalcStart.emit(len(self.doors) + 2*(len(self.spaces)))
+            progress_bar_length = len(self.doors) + 3*(len(self.spaces)) + len(self.arrow_families)
+            self.counter = 0
+
+            self.CalcStart.emit(progress_bar_length)
             self.__main()
             self.CalcEnd.emit()
+
+            
             
         except Exception as e:
             logger.error(e, exc_info=True)
@@ -186,12 +192,17 @@ class CalculateRoomOverflows(object):
                 tr.Start()
                 self.reset_overflows(self.spaces)
                 tr.Commit()
+            
+            if len(self.arrow_families) > 0:
+                with Transaction(self.doc, 'Delete arrows') as tr:
+                    tr.Start()
+                    self.delete_arrows(self.arrow_families)
+                    tr.Commit()
 
             overflows_data = {}
             inflows_data = {}
             phases = self.linkedDoc.Phases
             phase = phases[phases.Size - 1]
-            counter = 0
 
             for door in self.doors:
                 try:
@@ -209,8 +220,8 @@ class CalculateRoomOverflows(object):
                     logger.error(e, exc_info=True)
                     pass
 
-                counter += 1
-                self.ReportProgress.emit(counter)
+                self.counter += 1
+                self.ReportProgress.emit(self.counter)
 
             with Transaction(self.doc, "Set overflows") as tr:
                 tr.Start()
@@ -220,16 +231,16 @@ class CalculateRoomOverflows(object):
                         room_overflow_par = overflow_space.get_Parameter(self._overflow_par)
                         conv_val = UnitUtils.ConvertToInternalUnits(overflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
                         room_overflow_par.Set(conv_val)
-                        counter += 1
-                        self.ReportProgress.emit(counter)
+                        self.counter += 1
+                        self.ReportProgress.emit(self.counter)
 
                     for inflow_space, inflow in inflows_data.items():
                     
                         room_inflow_par = inflow_space.get_Parameter(self._inflow_par)
                         conv_val = UnitUtils.ConvertToInternalUnits(inflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
                         room_inflow_par.Set(conv_val)
-                        counter += 1
-                        self.ReportProgress.emit(counter)
+                        self.counter += 1
+                        self.ReportProgress.emit(self.counter)
 
                 except Exception as e:
                     logger.error(e, exc_info=True)
@@ -241,6 +252,7 @@ class CalculateRoomOverflows(object):
             if commit_status != TransactionStatus.Committed: 
                 WinForms.MessageBox.Show("Task failed!", "Error!", 
                 WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error)
+                return
     
     def calculate_overflow(self, door, rooms):
         door_width = float(door.get_Parameter(BuiltInParameter.DOOR_WIDTH).AsValueString())
@@ -286,36 +298,59 @@ class CalculateRoomOverflows(object):
         return dL, overflow_space.space_id, inflow_space.space_id
 
     def reset_overflows(self, spaces):
-        for space in spaces:
-            try:
+        try:
+            for space in spaces:
+            
                 overflow_par = space.get_Parameter(self._overflow_par)
                 overflow_par.Set(0)
-            except Exception as e:
-                    logger.error(e, exc_info=True)
-                    pass
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
             
-            try:
+        try:
                 inflow_par = space.get_Parameter(self._inflow_par)
                 inflow_par.Set(0)
-            except Exception as e:
-                    logger.error(e, exc_info=True)
-                    pass
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
 
-    def delete_arrows(self):
-        arrow_family_id = self.get_arrow_family_type().Id
-        param_filter = FamilyInstanceFilter(self.doc, arrow_family_id)
-        arrow_family_instances = FilteredElementCollector(self.doc).WherePasses(param_filter).FirstElement()
-        # TODO
+        self.counter += 1
+        self.ReportProgress.emit(self.counter)
+
+    def get_arrow_families(self):
+        try:
+            arrow_family_id = self.get_arrow_family_type().Id
+            param_filter = FamilyInstanceFilter(self.doc, arrow_family_id)
+            arrow_family_instances = FilteredElementCollector(self.doc).WherePasses(param_filter).ToElements()
+
+            return arrow_family_instances
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
+
+    def delete_arrows(self, arrows):
+        try:
+            for arrow in arrows:
+                self.doc.Delete(arrow.Id)
+                
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
+
+        self.counter += 1
+        self.ReportProgress.emit(self.counter)
 
     def get_mech_views(self):
 
         try:
             views = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfClass(View)
 
-            views_dict = {view.GenLevel.UniqueId: view for view in views 
-            if view.Name and view.GenLevel
-            and view.ViewType == ViewType.FloorPlan
-            and view.Discipline == ViewDiscipline.Mechanical}
+            views_dict = {view.GenLevel.UniqueId: view for view in views
+                        if view.Name and view.GenLevel
+                        and view.ViewType == ViewType.FloorPlan
+                        and view.Discipline == ViewDiscipline.Mechanical}
 
             return views_dict
 
