@@ -30,7 +30,7 @@ import re
 import logging
 import json
 import io
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 # Logger
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -459,6 +459,7 @@ class Controller(object):
         self._view._pressure_cls_par_comboBox.SelectedValueChanged += self.pressure_cls_par_comboBox_SelValChanged
         self._view._overflow_par_comboBox.SelectedValueChanged += self._overflow_par_comboBox_SelValChanged
         self._view._inflow_par_comboBox.SelectedValueChanged += self._inflow_par_comboBox_SelValChanged
+        self._view._views_treeView.AfterCheck += self.node_AfterCheck
         self._view._run_button.Click += self.run_button_Clicked
         self._view._load_stngs_button.Click += lambda _, __: self.load_settings()
         self._view._save_stngs_button.Click += lambda _, __: self.save_settings()
@@ -480,6 +481,7 @@ class Controller(object):
     
     def On_MainForm_StartUp(self, sender, args):
         self.load_project_parameters()
+        self.populate_views_tree()
 
     def save_settings(self):
 
@@ -569,6 +571,60 @@ class Controller(object):
             self._view._overflow_par_comboBox.Enabled = False
             self._view._inflow_par_comboBox.Enabled = False
 
+    def load_views(self):
+        try:
+            views_collector = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfClass(View)
+
+            views_dict = {view.Name: view for view in views_collector
+                        if view.Name and view.GenLevel
+                        and view.ViewType == ViewType.FloorPlan
+                        and (view.Discipline == ViewDiscipline.Mechanical
+                        or view.Discipline == ViewDiscipline.Coordination)}
+
+            return OrderedDict(sorted(views_dict.items()))
+
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
+
+    def populate_views_tree(self):
+        try:
+            views = self.load_views()
+            self._view._views_treeView.BeginUpdate()
+            self._view._views_treeView.Nodes[0].Nodes[0].Nodes.Clear()
+            self._view._views_treeView.Nodes[1].Nodes[0].Nodes.Clear()
+
+            for name, view in views.items():
+                if view.Discipline == ViewDiscipline.Coordination:
+                    self._view._views_treeView.Nodes[0].Nodes[0].Nodes.Add(name)
+
+                elif view.Discipline == ViewDiscipline.Mechanical:
+                    self._view._views_treeView.Nodes[1].Nodes[0].Nodes.Add(name)
+
+            self._view._views_treeView.EndUpdate()
+        
+        except Exception as e:
+                logger.error(e, exc_info=True)
+                pass
+
+    # Updates all child tree nodes recursively.
+    def check_all_child_nodes(self, treeNode, nodeChecked):
+        for node in treeNode.Nodes:
+            node.Checked = nodeChecked
+            if(node.Nodes.Count > 0):
+                # If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+                self.check_all_child_nodes(node, nodeChecked)
+
+
+    def node_AfterCheck(self, sender, args):
+        # The code only executes if the user caused the checked state to change.
+        if(args.Action != WinForms.TreeViewAction.Unknown):
+            if(args.Node.Nodes.Count > 0):
+                # Calls the CheckAllChildNodes method, passing in the current 
+                # Checked value of the TreeNode whose checked state changed.
+                self.check_all_child_nodes(args.Node, args.Node.Checked)
+
+
     def get_parameter_bindings(self):
         prj_defs_dict = {}
         binding_map = self.doc.ParameterBindings
@@ -584,17 +640,16 @@ class Controller(object):
     def load_project_parameters(self):
         internal_defs = self.get_parameter_bindings()
         self.parameters = self.merge_two_dicts(self.parameters, internal_defs)
-        for control in self._view._tableLayoutPanel.Controls:
-                if control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
-                            self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
-                    control.Enabled = True
-                    control.Items.Clear()
-                    control.BeginUpdate()
-                    for par_name in sorted(internal_defs):
-                        control.Items.Add(par_name)
-                    control.EndUpdate()
-                    control.Items.Insert(0, "Please select a parameter...")
-                    control.SelectedIndex = 0
+        for control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
+                        self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
+                control.Enabled = True
+                control.Items.Clear()
+                control.BeginUpdate()
+                for par_name in sorted(internal_defs):
+                    control.Items.Add(par_name)
+                control.EndUpdate()
+                control.Items.Insert(0, "Please select a parameter...")
+                control.SelectedIndex = 0
     
     def load_shared_par_groups(self):
         shr_par_file = self.app.OpenSharedParameterFile()
@@ -635,20 +690,20 @@ class Controller(object):
                     control.SelectedIndex = 0
     
     def _space_id_par_comboBox_SelValChanged(self, sender, args):
-        if self._view._space_id_par_comboBox.SelectedIndex != 0: 
-            self._view._space_id_par_textBox.Text = self._view._space_id_par_comboBox.SelectedItem
+        if sender.SelectedIndex != 0: 
+            self._view._space_id_par_textBox.Text = sender.SelectedItem
             
     def pressure_cls_par_comboBox_SelValChanged(self, sender, args):
-        if self._view._pressure_cls_par_comboBox.SelectedIndex != 0:
-            self._view._pressure_cls_par_textBox.Text = self._view._pressure_cls_par_comboBox.SelectedItem
+        if sender.SelectedIndex != 0:
+            self._view._pressure_cls_par_textBox.Text = sender.SelectedItem
     
     def _overflow_par_comboBox_SelValChanged(self, sender, args):
-        if self._view._overflow_par_comboBox.SelectedIndex != 0:
-            self._view._overflow_par_textBox.Text = self._view._overflow_par_comboBox.SelectedItem
+        if sender.SelectedIndex != 0:
+            self._view._overflow_par_textBox.Text = sender.SelectedItem
     
     def _inflow_par_comboBox_SelValChanged(self, sender, args):
-        if self._view._inflow_par_comboBox.SelectedIndex != 0:
-            self._view._inflow_par_textBox.Text = self._view._inflow_par_comboBox.SelectedItem
+        if sender.SelectedIndex != 0:
+            self._view._inflow_par_textBox.Text = sender.SelectedItem
 
     def run_button_Clicked(self, sender, args):
 

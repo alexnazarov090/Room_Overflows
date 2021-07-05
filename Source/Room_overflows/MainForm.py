@@ -9,6 +9,12 @@ class MainForm(Form):
 		self.InitializeComponent()
 	
 	def InitializeComponent(self):
+		treeNode11 = System.Windows.Forms.TreeNode("Floor Plans")
+		treeNode12 = System.Windows.Forms.TreeNode("Coordination", System.Array[System.Windows.Forms.TreeNode](
+			[treeNode11]))
+		treeNode13 = System.Windows.Forms.TreeNode("Floor Plans")
+		treeNode14 = System.Windows.Forms.TreeNode("Mechanical", System.Array[System.Windows.Forms.TreeNode](
+			[treeNode13]))
 		self._tableLayoutPanel = System.Windows.Forms.TableLayoutPanel()
 		self._space_id_par_label = System.Windows.Forms.Label()
 		self._pressure_cls_par_label = System.Windows.Forms.Label()
@@ -40,10 +46,17 @@ class MainForm(Form):
 		self._config_file_path_textBox = System.Windows.Forms.TextBox()
 		self._load_stngs_button = System.Windows.Forms.Button()
 		self._save_stngs_button = System.Windows.Forms.Button()
+		self._tabControl = System.Windows.Forms.TabControl()
+		self._parameters_tabPage = System.Windows.Forms.TabPage()
+		self._views_tabPage = System.Windows.Forms.TabPage()
+		self._views_treeView = System.Windows.Forms.TreeView()
 		self._tableLayoutPanel.SuspendLayout()
 		self._pars_set_groupBox.SuspendLayout()
 		self._door_pars_groupBox.SuspendLayout()
 		self._settings_groupBox.SuspendLayout()
+		self._tabControl.SuspendLayout()
+		self._parameters_tabPage.SuspendLayout()
+		self._views_tabPage.SuspendLayout()
 		self.SuspendLayout()
 		# 
 		# tableLayoutPanel
@@ -70,7 +83,7 @@ class MainForm(Form):
 		self._tableLayoutPanel.Controls.Add(self._pressure_cls_par_textBox, 1, 4)
 		self._tableLayoutPanel.Controls.Add(self._overflow_par_textBox, 1, 6)
 		self._tableLayoutPanel.Controls.Add(self._inflow_par_textBox, 1, 8)
-		self._tableLayoutPanel.Location = System.Drawing.Point(12, 141)
+		self._tableLayoutPanel.Location = System.Drawing.Point(6, 6)
 		self._tableLayoutPanel.Name = "tableLayoutPanel"
 		self._tableLayoutPanel.RowCount = 10
 		self._tableLayoutPanel.RowStyles.Add(System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10))
@@ -83,8 +96,8 @@ class MainForm(Form):
 		self._tableLayoutPanel.RowStyles.Add(System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10))
 		self._tableLayoutPanel.RowStyles.Add(System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10))
 		self._tableLayoutPanel.RowStyles.Add(System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10))
-		self._tableLayoutPanel.Size = System.Drawing.Size(560, 369)
-		self._tableLayoutPanel.TabIndex = 2
+		self._tableLayoutPanel.Size = System.Drawing.Size(540, 370)
+		self._tableLayoutPanel.TabIndex = 5
 		# 
 		# space_id_par_label
 		# 
@@ -105,11 +118,11 @@ class MainForm(Form):
 		self._pressure_cls_par_label.AutoSize = True
 		self._pressure_cls_par_label.Dock = System.Windows.Forms.DockStyle.Fill
 		self._pressure_cls_par_label.Font = System.Drawing.Font("Microsoft Sans Serif", 12, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._pressure_cls_par_label.Location = System.Drawing.Point(4, 112)
-		self._pressure_cls_par_label.Margin = System.Windows.Forms.Padding(3)
+		self._pressure_cls_par_label.Location = System.Drawing.Point(1, 109)
+		self._pressure_cls_par_label.Margin = System.Windows.Forms.Padding(0)
 		self._pressure_cls_par_label.Name = "pressure_cls_par_label"
 		self._tableLayoutPanel.SetRowSpan(self._pressure_cls_par_label, 2)
-		self._pressure_cls_par_label.Size = System.Drawing.Size(222, 65)
+		self._pressure_cls_par_label.Size = System.Drawing.Size(228, 71)
 		self._pressure_cls_par_label.TabIndex = 2
 		self._pressure_cls_par_label.Text = "Pressure Class Parameter"
 		self._pressure_cls_par_label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
@@ -119,11 +132,11 @@ class MainForm(Form):
 		self._overflow_par_label.AutoSize = True
 		self._overflow_par_label.Dock = System.Windows.Forms.DockStyle.Fill
 		self._overflow_par_label.Font = System.Drawing.Font("Microsoft Sans Serif", 12, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._overflow_par_label.Location = System.Drawing.Point(4, 184)
-		self._overflow_par_label.Margin = System.Windows.Forms.Padding(3)
+		self._overflow_par_label.Location = System.Drawing.Point(1, 181)
+		self._overflow_par_label.Margin = System.Windows.Forms.Padding(0)
 		self._overflow_par_label.Name = "overflow_par_label"
 		self._tableLayoutPanel.SetRowSpan(self._overflow_par_label, 2)
-		self._overflow_par_label.Size = System.Drawing.Size(222, 65)
+		self._overflow_par_label.Size = System.Drawing.Size(228, 71)
 		self._overflow_par_label.TabIndex = 3
 		self._overflow_par_label.Text = "Overflow Air Parameter"
 		self._overflow_par_label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
@@ -133,11 +146,11 @@ class MainForm(Form):
 		self._inflow_par_label.AutoSize = True
 		self._inflow_par_label.Dock = System.Windows.Forms.DockStyle.Fill
 		self._inflow_par_label.Font = System.Drawing.Font("Microsoft Sans Serif", 12, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._inflow_par_label.Location = System.Drawing.Point(4, 256)
-		self._inflow_par_label.Margin = System.Windows.Forms.Padding(3)
+		self._inflow_par_label.Location = System.Drawing.Point(1, 253)
+		self._inflow_par_label.Margin = System.Windows.Forms.Padding(0)
 		self._inflow_par_label.Name = "inflow_par_label"
 		self._tableLayoutPanel.SetRowSpan(self._inflow_par_label, 2)
-		self._inflow_par_label.Size = System.Drawing.Size(222, 65)
+		self._inflow_par_label.Size = System.Drawing.Size(228, 71)
 		self._inflow_par_label.TabIndex = 4
 		self._inflow_par_label.Text = "Inflow Air Parameter"
 		self._inflow_par_label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
@@ -147,7 +160,7 @@ class MainForm(Form):
 		self._launch_label.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right
 		self._launch_label.AutoSize = True
 		self._launch_label.Font = System.Drawing.Font("Microsoft Sans Serif", 12, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._launch_label.Location = System.Drawing.Point(4, 336)
+		self._launch_label.Location = System.Drawing.Point(4, 337)
 		self._launch_label.Margin = System.Windows.Forms.Padding(3)
 		self._launch_label.Name = "launch_label"
 		self._launch_label.Size = System.Drawing.Size(222, 20)
@@ -167,7 +180,7 @@ class MainForm(Form):
 		self._space_id_par_comboBox.Location = System.Drawing.Point(233, 42)
 		self._space_id_par_comboBox.MaxDropDownItems = 10
 		self._space_id_par_comboBox.Name = "space_id_par_comboBox"
-		self._space_id_par_comboBox.Size = System.Drawing.Size(323, 24)
+		self._space_id_par_comboBox.Size = System.Drawing.Size(303, 24)
 		self._space_id_par_comboBox.TabIndex = 7
 		# 
 		# pressure_cls_par_comboBox
@@ -182,7 +195,7 @@ class MainForm(Form):
 		self._pressure_cls_par_comboBox.Location = System.Drawing.Point(233, 114)
 		self._pressure_cls_par_comboBox.MaxDropDownItems = 10
 		self._pressure_cls_par_comboBox.Name = "pressure_cls_par_comboBox"
-		self._pressure_cls_par_comboBox.Size = System.Drawing.Size(323, 24)
+		self._pressure_cls_par_comboBox.Size = System.Drawing.Size(303, 24)
 		self._pressure_cls_par_comboBox.TabIndex = 9
 		# 
 		# overflow_par_comboBox
@@ -197,7 +210,7 @@ class MainForm(Form):
 		self._overflow_par_comboBox.Location = System.Drawing.Point(233, 186)
 		self._overflow_par_comboBox.MaxDropDownItems = 10
 		self._overflow_par_comboBox.Name = "overflow_par_comboBox"
-		self._overflow_par_comboBox.Size = System.Drawing.Size(323, 24)
+		self._overflow_par_comboBox.Size = System.Drawing.Size(303, 24)
 		self._overflow_par_comboBox.TabIndex = 11
 		# 
 		# inflow_par_comboBox
@@ -212,7 +225,7 @@ class MainForm(Form):
 		self._inflow_par_comboBox.Location = System.Drawing.Point(233, 258)
 		self._inflow_par_comboBox.MaxDropDownItems = 10
 		self._inflow_par_comboBox.Name = "inflow_par_comboBox"
-		self._inflow_par_comboBox.Size = System.Drawing.Size(323, 24)
+		self._inflow_par_comboBox.Size = System.Drawing.Size(303, 24)
 		self._inflow_par_comboBox.TabIndex = 13
 		# 
 		# run_button
@@ -221,9 +234,9 @@ class MainForm(Form):
 		self._run_button.FlatAppearance.BorderColor = System.Drawing.Color.White
 		self._run_button.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Gray
 		self._run_button.Font = System.Drawing.Font("Microsoft Sans Serif", 14.25, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, 204)
-		self._run_button.Location = System.Drawing.Point(406, 330)
+		self._run_button.Location = System.Drawing.Point(418, 336)
 		self._run_button.Name = "run_button"
-		self._run_button.Size = System.Drawing.Size(150, 35)
+		self._run_button.Size = System.Drawing.Size(118, 30)
 		self._run_button.TabIndex = 15
 		self._run_button.Text = "RUN"
 		self._run_button.UseVisualStyleBackColor = True
@@ -267,12 +280,13 @@ class MainForm(Form):
 		# 
 		# shared_parameters_label
 		# 
-		self._shared_parameters_label.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right
 		self._shared_parameters_label.AutoSize = True
+		self._shared_parameters_label.Dock = System.Windows.Forms.DockStyle.Fill
 		self._shared_parameters_label.Font = System.Drawing.Font("Microsoft Sans Serif", 12, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
-		self._shared_parameters_label.Location = System.Drawing.Point(4, 8)
+		self._shared_parameters_label.Location = System.Drawing.Point(1, 1)
+		self._shared_parameters_label.Margin = System.Windows.Forms.Padding(0)
 		self._shared_parameters_label.Name = "shared_parameters_label"
-		self._shared_parameters_label.Size = System.Drawing.Size(222, 20)
+		self._shared_parameters_label.Size = System.Drawing.Size(228, 35)
 		self._shared_parameters_label.TabIndex = 0
 		self._shared_parameters_label.Text = "Shared Parameters Group"
 		self._shared_parameters_label.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
@@ -291,7 +305,7 @@ class MainForm(Form):
 		self._shared_parameters_comboBox.Location = System.Drawing.Point(233, 6)
 		self._shared_parameters_comboBox.MaxDropDownItems = 10
 		self._shared_parameters_comboBox.Name = "shared_parameters_comboBox"
-		self._shared_parameters_comboBox.Size = System.Drawing.Size(323, 24)
+		self._shared_parameters_comboBox.Size = System.Drawing.Size(303, 24)
 		self._shared_parameters_comboBox.TabIndex = 6
 		# 
 		# space_id_par_textBox
@@ -301,7 +315,7 @@ class MainForm(Form):
 		self._space_id_par_textBox.Enabled = False
 		self._space_id_par_textBox.Location = System.Drawing.Point(233, 76)
 		self._space_id_par_textBox.Name = "space_id_par_textBox"
-		self._space_id_par_textBox.Size = System.Drawing.Size(323, 20)
+		self._space_id_par_textBox.Size = System.Drawing.Size(303, 22)
 		self._space_id_par_textBox.TabIndex = 8
 		self._space_id_par_textBox.Tag = "Space Identification Parameter"
 		# 
@@ -312,7 +326,7 @@ class MainForm(Form):
 		self._pressure_cls_par_textBox.Enabled = False
 		self._pressure_cls_par_textBox.Location = System.Drawing.Point(233, 148)
 		self._pressure_cls_par_textBox.Name = "pressure_cls_par_textBox"
-		self._pressure_cls_par_textBox.Size = System.Drawing.Size(323, 20)
+		self._pressure_cls_par_textBox.Size = System.Drawing.Size(303, 22)
 		self._pressure_cls_par_textBox.TabIndex = 10
 		self._pressure_cls_par_textBox.Tag = "Pressure Class Parameter"
 		# 
@@ -323,7 +337,7 @@ class MainForm(Form):
 		self._overflow_par_textBox.Enabled = False
 		self._overflow_par_textBox.Location = System.Drawing.Point(233, 220)
 		self._overflow_par_textBox.Name = "overflow_par_textBox"
-		self._overflow_par_textBox.Size = System.Drawing.Size(323, 20)
+		self._overflow_par_textBox.Size = System.Drawing.Size(303, 22)
 		self._overflow_par_textBox.TabIndex = 12
 		self._overflow_par_textBox.Tag = "Overflow Air Parameter"
 		# 
@@ -334,7 +348,7 @@ class MainForm(Form):
 		self._inflow_par_textBox.Enabled = False
 		self._inflow_par_textBox.Location = System.Drawing.Point(233, 292)
 		self._inflow_par_textBox.Name = "inflow_par_textBox"
-		self._inflow_par_textBox.Size = System.Drawing.Size(323, 20)
+		self._inflow_par_textBox.Size = System.Drawing.Size(303, 22)
 		self._inflow_par_textBox.TabIndex = 14
 		self._inflow_par_textBox.Tag = "Inflow Air Parameter"
 		# 
@@ -453,14 +467,68 @@ class MainForm(Form):
 		self._save_stngs_button.Text = "Save Settings"
 		self._save_stngs_button.UseVisualStyleBackColor = True
 		# 
+		# tabControl
+		# 
+		self._tabControl.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right
+		self._tabControl.Controls.Add(self._parameters_tabPage)
+		self._tabControl.Controls.Add(self._views_tabPage)
+		self._tabControl.Font = System.Drawing.Font("Microsoft Sans Serif", 9.75, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 204)
+		self._tabControl.Location = System.Drawing.Point(12, 109)
+		self._tabControl.Name = "tabControl"
+		self._tabControl.SelectedIndex = 0
+		self._tabControl.Size = System.Drawing.Size(560, 411)
+		self._tabControl.TabIndex = 2
+		# 
+		# parameters_tabPage
+		# 
+		self._parameters_tabPage.BackColor = System.Drawing.Color.Silver
+		self._parameters_tabPage.Controls.Add(self._tableLayoutPanel)
+		self._parameters_tabPage.Location = System.Drawing.Point(4, 25)
+		self._parameters_tabPage.Name = "parameters_tabPage"
+		self._parameters_tabPage.Padding = System.Windows.Forms.Padding(3)
+		self._parameters_tabPage.Size = System.Drawing.Size(552, 382)
+		self._parameters_tabPage.TabIndex = 0
+		self._parameters_tabPage.Text = "Parameters"
+		# 
+		# views_tabPage
+		# 
+		self._views_tabPage.Controls.Add(self._views_treeView)
+		self._views_tabPage.Location = System.Drawing.Point(4, 25)
+		self._views_tabPage.Name = "views_tabPage"
+		self._views_tabPage.Padding = System.Windows.Forms.Padding(3)
+		self._views_tabPage.Size = System.Drawing.Size(552, 382)
+		self._views_tabPage.TabIndex = 1
+		self._views_tabPage.Text = "Views"
+		self._views_tabPage.UseVisualStyleBackColor = True
+		# 
+		# views_treeView
+		# 
+		self._views_treeView.CheckBoxes = True
+		self._views_treeView.Dock = System.Windows.Forms.DockStyle.Fill
+		self._views_treeView.Location = System.Drawing.Point(3, 3)
+		self._views_treeView.Name = "views_treeView"
+		treeNode11.Name = "FloorPlansNode1"
+		treeNode11.Text = "Floor Plans"
+		treeNode12.Name = "CoordinationNode"
+		treeNode12.Text = "Coordination"
+		treeNode13.Name = "FloorPlansNode2"
+		treeNode13.Text = "Floor Plans"
+		treeNode14.Name = "MechanicalNode"
+		treeNode14.Text = "Mechanical"
+		self._views_treeView.Nodes.AddRange(System.Array[System.Windows.Forms.TreeNode](
+			[treeNode12,
+			treeNode14]))
+		self._views_treeView.Size = System.Drawing.Size(546, 376)
+		self._views_treeView.TabIndex = 0
+		# 
 		# MainForm
 		# 
 		self.ClientSize = System.Drawing.Size(584, 667)
+		self.Controls.Add(self._tabControl)
 		self.Controls.Add(self._settings_groupBox)
 		self.Controls.Add(self._progressBar)
 		self.Controls.Add(self._door_pars_groupBox)
 		self.Controls.Add(self._pars_set_groupBox)
-		self.Controls.Add(self._tableLayoutPanel)
 		self.MinimumSize = System.Drawing.Size(600, 700)
 		self.Name = "MainForm"
 		self.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
@@ -472,4 +540,7 @@ class MainForm(Form):
 		self._door_pars_groupBox.PerformLayout()
 		self._settings_groupBox.ResumeLayout(False)
 		self._settings_groupBox.PerformLayout()
+		self._tabControl.ResumeLayout(False)
+		self._parameters_tabPage.ResumeLayout(False)
+		self._views_tabPage.ResumeLayout(False)
 		self.ResumeLayout(False)
