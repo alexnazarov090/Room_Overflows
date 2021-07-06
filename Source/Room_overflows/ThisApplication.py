@@ -83,9 +83,9 @@ class ThisApplication (ApplicationEntryPoint):
 
 class CalculateRoomOverflows(object):
     def __init__(self, __revit__, space_id_par=None,  pressure_cls_par=None, 
-                overflow_par=None, inflow_par=None, 
-                door_crack_width=0.001, flow_coefficient=0.7):
-                
+                overflow_par=None, inflow_par=None, door_crack_width=0.001,
+                flow_coefficient=0.7, rvt_views=None, place_arrows_toggle=False):
+
         self.doc = __revit__.ActiveUIDocument.Document
         self.uidoc = UIDocument(self.doc)
         self._space_id_par = space_id_par
@@ -94,6 +94,8 @@ class CalculateRoomOverflows(object):
         self._inflow_par = inflow_par
         self._door_crack_width = door_crack_width
         self._flow_coefficient = flow_coefficient
+        self._rvt_views = rvt_views
+        self._place_arrows_toggle = place_arrows_toggle
 
         self.CalcStart = Event()
         self.ReportProgress = Event()
@@ -147,6 +149,22 @@ class CalculateRoomOverflows(object):
     @flow_coefficient.setter
     def flow_coefficient(self, value):
         self._flow_coefficient = value
+    
+    @property
+    def rvt_views(self):
+        return self._rvt_views
+
+    @rvt_views.setter
+    def rvt_views(self, value):
+        self._rvt_views = value
+    
+    @property
+    def place_arrows_toggle(self):
+        return self._place_arrows_toggle
+
+    @place_arrows_toggle.setter
+    def place_arrows_toggle(self, value):
+        self._place_arrows_toggle = value
     # endregion Getters and Setters
 
     def main(self):
@@ -159,7 +177,7 @@ class CalculateRoomOverflows(object):
 
             self.doors = FilteredElementCollector(self.linkedDoc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_Doors).ToElements()
             self.spaces = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_MEPSpaces).ToElements()
-            self.views_dict = self.get_mech_views()
+            # self.views_dict = self.get_mech_views()
             self.arrow_families = self.get_arrow_families()
 
             progress_bar_length = len(self.doors) + 3*(len(self.spaces)) + len(self.arrow_families)
@@ -169,8 +187,6 @@ class CalculateRoomOverflows(object):
             self.__main()
             self.CalcEnd.emit()
 
-            
-            
         except Exception as e:
             logger.error(e, exc_info=True)
             WinForms.MessageBox.Show("Error in obtaining linked model", "Error!", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error)
@@ -213,8 +229,10 @@ class CalculateRoomOverflows(object):
                         overflows_data[overflow_space] = overflows_data.get(overflow_space, 0) + airflow
                         inflows_data[inflow_space] = inflows_data.get(inflow_space, 0) + airflow
 
-                        if airflow > 0:
-                            self.insert_arrow(door, overflow_space, inflow_space, airflow)
+                        if self._place_arrows_toggle:
+                            if airflow > 0:
+                                for view in self.rvt_views:
+                                    self.insert_arrow(view, door, overflow_space, inflow_space, airflow)
 
                 except Exception as e:
                     logger.error(e, exc_info=True)
@@ -342,21 +360,21 @@ class CalculateRoomOverflows(object):
         self.counter += 1
         self.ReportProgress.emit(self.counter)
 
-    def get_mech_views(self):
+    # def get_mech_views(self):
 
-        try:
-            views = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfClass(View)
+    #     try:
+    #         views = FilteredElementCollector(self.doc).WhereElementIsNotElementType().OfClass(View)
 
-            views_dict = {view.GenLevel.UniqueId: view for view in views
-                        if view.Name and view.GenLevel
-                        and view.ViewType == ViewType.FloorPlan
-                        and view.Discipline == ViewDiscipline.Mechanical}
+    #         views_dict = {view.GenLevel.UniqueId: view for view in views
+    #                     if view.Name and view.GenLevel
+    #                     and view.ViewType == ViewType.FloorPlan
+    #                     and view.Discipline == ViewDiscipline.Mechanical}
 
-            return views_dict
+    #         return views_dict
 
-        except Exception as e:
-                logger.error(e, exc_info=True)
-                pass
+    #     except Exception as e:
+    #             logger.error(e, exc_info=True)
+    #             pass
 
     def get_arrow_family_type(self):
         try:
@@ -374,7 +392,7 @@ class CalculateRoomOverflows(object):
                 logger.error(e, exc_info=True)
                 return
 
-    def insert_arrow(self, door, overflow_space, inflow_space, airflow):
+    def insert_arrow(self, view, door, overflow_space, inflow_space, airflow):
         try:
             with Transaction(self.doc, "Insert Arrow") as tr:
                 tr.Start()
@@ -385,55 +403,46 @@ class CalculateRoomOverflows(object):
 
                 current_level_id = overflow_space.Level.UniqueId
 
-                door_coords = self.transform.OfPoint(door.Location.Point)
-                arrow_instance = self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, self.views_dict.get(current_level_id))
-                
-                door_orientation = door.FacingOrientation
+                if view.GenLevel.UniqueId == current_level_id:
+                    door_coords = self.transform.OfPoint(door.Location.Point)
+                    arrow_instance = self.doc.Create.NewFamilyInstance(door_coords, arrow_symbol, view)
 
-                point1 = door_coords
-                point2 = door_coords + XYZ(0, 0, 10)
-                axis = Line.CreateBound(point1, point2)
-                angleToRotate = 0
+                    door_orientation = door.FacingOrientation
 
-                door_bbox = door.get_BoundingBox(self.views_dict.get(current_level_id))
+                    point1 = door_coords
+                    point2 = door_coords + XYZ(0, 0, 10)
+                    axis = Line.CreateBound(point1, point2)
+                    angleToRotate = 0
 
-                if int(door_orientation.X) in (-1, 1):
+                    door_bbox = door.get_BoundingBox(view)
 
-                    if overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)
-                    ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)):
-                        angleToRotate = -90
+                    if int(door_orientation.X) in (-1, 1):
 
-                    elif overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)
-                    ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)):
-                        angleToRotate = 90
+                        if overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)
+                        ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)):
+                            angleToRotate = -90
 
-                else:
-                
-                    if overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)
-                    ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)):
-                        angleToRotate = 180
+                        elif overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)
+                        ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)):
+                            angleToRotate = 90
 
-                ElementTransformUtils.RotateElement(self.doc, arrow_instance.Id, axis, ((math.pi / 180) * angleToRotate))
-                
-                tr.Commit()
+                    else:
+                    
+                        if overflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Max)
+                        ) or inflow_space.IsPointInSpace(self.transform.OfPoint(door_bbox.Min)):
+                            angleToRotate = 180
 
-        except Exception as e:
-                logger.error(e, exc_info=True)
-                pass
+                    ElementTransformUtils.RotateElement(self.doc, arrow_instance.Id, axis, ((math.pi / 180) * angleToRotate))
 
-        try:
-            with Transaction(self.doc, "Set Air Leakage") as tr:
-                tr.Start()
-
-                air_leakage_par = arrow_instance.GetParameters("Air Leakage")[0]
-                conv_val = UnitUtils.ConvertToInternalUnits(airflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
-                air_leakage_par.Set(conv_val)
+                    air_leakage_par = arrow_instance.GetParameters("Air Leakage")[0]
+                    conv_val = UnitUtils.ConvertToInternalUnits(airflow, DisplayUnitType.DUT_CUBIC_METERS_PER_HOUR)
+                    air_leakage_par.Set(conv_val)
 
                 tr.Commit()
 
         except Exception as e:
-                logger.error(e, exc_info=True)
-                pass
+            logger.error(e, exc_info=True)
+            pass
 
 
 class Controller(object):
@@ -443,6 +452,7 @@ class Controller(object):
         self._view = view
         self._model = model
         self.parameters = {}
+        self.rvt_views = self.load_views()
         self.config_file_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.open_config_file_Dialog = WinForms.OpenFileDialog()
         self.save_config_file_Dialog = WinForms.SaveFileDialog()
@@ -459,6 +469,7 @@ class Controller(object):
         self._view._pressure_cls_par_comboBox.SelectedValueChanged += self.pressure_cls_par_comboBox_SelValChanged
         self._view._overflow_par_comboBox.SelectedValueChanged += self._overflow_par_comboBox_SelValChanged
         self._view._inflow_par_comboBox.SelectedValueChanged += self._inflow_par_comboBox_SelValChanged
+        self._view._insert_arrows_checkBox.CheckedChanged += self.insert_arrows_checkBox_CheckChng
         self._view._views_treeView.AfterCheck += self.node_AfterCheck
         self._view._run_button.Click += self.run_button_Clicked
         self._view._load_stngs_button.Click += lambda _, __: self.load_settings()
@@ -578,23 +589,21 @@ class Controller(object):
             views_dict = {view.Name: view for view in views_collector
                         if view.Name and view.GenLevel
                         and view.ViewType == ViewType.FloorPlan
-                        and (view.Discipline == ViewDiscipline.Mechanical
-                        or view.Discipline == ViewDiscipline.Coordination)}
+                        and view.Discipline in (ViewDiscipline.Mechanical, ViewDiscipline.Coordination)}
 
             return OrderedDict(sorted(views_dict.items()))
 
         except Exception as e:
-                logger.error(e, exc_info=True)
-                pass
+            logger.error(e, exc_info=True)
+            pass
 
     def populate_views_tree(self):
         try:
-            views = self.load_views()
             self._view._views_treeView.BeginUpdate()
             self._view._views_treeView.Nodes[0].Nodes[0].Nodes.Clear()
             self._view._views_treeView.Nodes[1].Nodes[0].Nodes.Clear()
 
-            for name, view in views.items():
+            for name, view in self.rvt_views.items():
                 if view.Discipline == ViewDiscipline.Coordination:
                     self._view._views_treeView.Nodes[0].Nodes[0].Nodes.Add(name)
 
@@ -604,24 +613,22 @@ class Controller(object):
             self._view._views_treeView.EndUpdate()
         
         except Exception as e:
-                logger.error(e, exc_info=True)
-                pass
+            logger.error(e, exc_info=True)
+            pass
 
-    # Updates all child tree nodes recursively.
     def check_all_child_nodes(self, treeNode, nodeChecked):
+
         for node in treeNode.Nodes:
             node.Checked = nodeChecked
+
             if(node.Nodes.Count > 0):
-                # If the current node has child nodes, call the CheckAllChildsNodes method recursively.
                 self.check_all_child_nodes(node, nodeChecked)
 
 
     def node_AfterCheck(self, sender, args):
-        # The code only executes if the user caused the checked state to change.
         if(args.Action != WinForms.TreeViewAction.Unknown):
+
             if(args.Node.Nodes.Count > 0):
-                # Calls the CheckAllChildNodes method, passing in the current 
-                # Checked value of the TreeNode whose checked state changed.
                 self.check_all_child_nodes(args.Node, args.Node.Checked)
 
 
@@ -674,20 +681,20 @@ class Controller(object):
             self.parameters = self.merge_two_dicts(self.parameters, ext_defs)
             for control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
                             self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
-                        control.Enabled = True
-                        control.Items.Clear()
-                        control.BeginUpdate()
-                        for par_name in sorted(ext_defs):
-                            control.Items.Add(par_name)
-                        control.EndUpdate()
-                        control.Items.Insert(0, "Please select a parameter...")
-                        control.SelectedIndex = 0
+                control.Enabled = True
+                control.Items.Clear()
+                control.BeginUpdate()
+                for par_name in sorted(ext_defs):
+                    control.Items.Add(par_name)
+                control.EndUpdate()
+                control.Items.Insert(0, "Please select a parameter...")
+                control.SelectedIndex = 0
         else:
             for control in (self._view._space_id_par_comboBox, self._view._pressure_cls_par_comboBox, 
                             self._view._overflow_par_comboBox, self._view._inflow_par_comboBox):
-                    control.Items.Clear()
-                    control.Items.Insert(0, "Please select a parameter...")
-                    control.SelectedIndex = 0
+                control.Items.Clear()
+                control.Items.Insert(0, "Please select a parameter...")
+                control.SelectedIndex = 0
     
     def _space_id_par_comboBox_SelValChanged(self, sender, args):
         if sender.SelectedIndex != 0: 
@@ -705,29 +712,51 @@ class Controller(object):
         if sender.SelectedIndex != 0:
             self._view._inflow_par_textBox.Text = sender.SelectedItem
 
+    def insert_arrows_checkBox_CheckChng(self, sender, args):
+        if sender.CheckState == WinForms.CheckState.Checked:
+            self._model.place_arrows_toggle = True
+
+            views_list = []
+            for node in (self._view._views_treeView.Nodes[0].Nodes[0], 
+                        self._view._views_treeView.Nodes[1].Nodes[0]):
+
+                if node.Nodes.Count > 0:
+                    for child_node in node.Nodes:
+                        if child_node.Checked:
+                            views_list.append(self.rvt_views[child_node.Text])
+            
+            self._model.rvt_views = views_list
+
+        else:
+            self._model.place_arrows_toggle = False
+
     def run_button_Clicked(self, sender, args):
+        try:
+            unfilled_fields = filter(lambda x: x is not None, map(self.check_for_empty, 
+            (self._view._space_id_par_textBox, 
+            self._view._pressure_cls_par_textBox, 
+            self._view._overflow_par_textBox, 
+            self._view._inflow_par_textBox, 
+            self._view._door_crack_width_textBox, 
+            self._view._flow_coeff_textBox)))
 
-        unfilled_fields = filter(lambda x: x is not None, map(self.check_for_empty, 
-        (self._view._space_id_par_textBox, 
-        self._view._pressure_cls_par_textBox, 
-        self._view._overflow_par_textBox, 
-        self._view._inflow_par_textBox, 
-        self._view._door_crack_width_textBox, 
-        self._view._flow_coeff_textBox)))
-        
-        if len(unfilled_fields) > 0:
-            message = ", ".join(unfilled_fields) + ' unfilled!'
-            WinForms.MessageBox.Show(message, "Error!", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Exclamation)
-            return
+            if len(unfilled_fields) > 0:
+                message = ", ".join(unfilled_fields) + ' unfilled!'
+                WinForms.MessageBox.Show(message, "Error!", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Exclamation)
+                return
 
-        self._model.space_id_par = self.parameters[self._view._space_id_par_textBox.Text]
-        self._model.pressure_cls_par = self.parameters[self._view._pressure_cls_par_textBox.Text]
-        self._model.overflow_par = self.parameters[self._view._overflow_par_textBox.Text]
-        self._model.inflow_par = self.parameters[self._view._inflow_par_textBox.Text]
-        self._model.door_crack_width = float(self._view._door_crack_width_textBox.Text)
-        self._model.flow_coefficient = float(self._view._flow_coeff_textBox.Text)
+            self._model.space_id_par = self.parameters[self._view._space_id_par_textBox.Text]
+            self._model.pressure_cls_par = self.parameters[self._view._pressure_cls_par_textBox.Text]
+            self._model.overflow_par = self.parameters[self._view._overflow_par_textBox.Text]
+            self._model.inflow_par = self.parameters[self._view._inflow_par_textBox.Text]
+            self._model.door_crack_width = float(self._view._door_crack_width_textBox.Text)
+            self._model.flow_coefficient = float(self._view._flow_coeff_textBox.Text)
 
-        self._model.main()
+            self._model.main()
+
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            pass
 
     def startProgressBar(self, *args):
         self._view._progressBar.Maximum = args[0]
